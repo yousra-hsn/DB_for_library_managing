@@ -1,0 +1,65 @@
+**Relations:
+
+Ressource (#code: varchar, titre varchar, dateApparition : date, editeur: varchar, genre: varchar, codeClassification: varchar)
+avec codeClassification UNIQUE
+
+Livre (#codeLivre=> Ressource, isbn: varchar, resume: varchar, langue: varchar) avec isbn UNIQUE
+
+OeuvreMusicale (#codeMusique=> Ressource, longueur: integer)
+
+Film (#codeFilm=> Ressource, langue: varchar, duree: integer, synopsis: varchar)
+
+Contributeur (#idContributeur: integer, nom: varchar, prenom: varchar, dateNaissance: date, nationalite: varchar)
+
+Exemplaire (#idExemplaire: integer, etat: {neuf|bon|abime|perdu}, disponible: bool, ressource=>Ressource, reserve=>Adherent) avec ressource NOT NULL
+
+Pret (#idPret: integer, dateDebutPret: date, dureePret: integer, dateRetourPrevuePret: date, dateRetourReellePret: date, etatRetour {bon|abime|perdu}, exemplaire=>Exemplaire, adherent=>Adherent) avec exemplaire NOT NULL et adherent NOT NULL
+
+Membre(#login: varchar, motDePasse: varchar, nom : varchar, prenom: varchar, adresse: varchar, email: varchar)
+
+Adherent (#login: varchar, motDePasse: varchar, nom: varchar, prenom: varchar, dateNaissance: date, adresse: varchar, email: varchar, telephone: integer, adhesion: boolean, blacklist: boolean, droitPret: boolean)
+
+Sanction (#idSanction: integer, motif: {perte|deterioration|retard}, dateDebutSanction: date, dateFinSanction: date, adherent=>Adherent, pret=>Pret) avec adherent NOT NULL et motif NOT NULL
+
+AEcrit(#contributeur=>Contributeur,#livre=>Livre)
+
+ACompose(#contributeur=>Contributeur,#musique=>OeuvreMusicale)
+
+AInterprete(#contributeur=>Contributeur,#musique=>OeuvreMusicale)
+
+ARealise(#contributeur=>Contributeur,#film=>Film)
+
+AJoueDans(#contributeur=>Contributeur,#film=>Film)
+
+**Transformations de l'héritage:
+
+-Pour la classe Ressource, nous avons opté pour un héritage par référence car la classe mère et les classes filles ont des associations propres (sinon les contraintes seraient complexes)
+-Pour la classe Utilisateur, nous avons opté pour un héritage par les classes filles car Utilisateur est une classe abstraite et n'a pas d'associations propres. L'héritage est exclusif.
+
+**Contraintes:
+
+- Si un exemplaire est réservé, Exemplaire.reserve est non nul et Exemplaire.disponible = False
+- L'adhérent ne peut emprunter qu'un nombre limité d'Exemplaires: si le nombre de prêt est trop important, alors 'droitPret = False'.
+- Si l'adhérent n'a pas encore rendu un livre après la date de fin du prêt, il ne peut pas emprunter (Pret.dateRetourPrevue<current_date AND dateRetourReelle=NULL)=>(Pret.adherent.droitPret=False)
+- Si le livre n'a pas été retourné à la date actuelle, alors l'exemplaire prêté est indisponible.
+current_date<Pret.dateRetourReelle => Pret.exemplaire.disponible=False
+- Un exemplaire ne peut pas être emprunté lorsqu'il est indisponible.
+- Si l'exemplaire est abimé ou perdu, il ne peut pas être prêté.
+(exemplaire.etat=abime or exemplaire.etat=perdu) => disponible=False
+
+- Si la sanction a une date de fin et si la sanction est un retard, alors la fin de la sanction dure le nombre de jour du retard.
+(Sanction.dateFinSanction NOT NULL) and (Sanction.motif='retard') => Sanction.DateFinSanction = dateDebutSanction + Pret.dateRetourReelle - dateRetourPrevue
+- La sanction commence une fois le prêt rendu.
+Sanction.dateDebutSanction=Pret.dateRetourReelle
+- Si la sanction n'est pas terminée (attente fin de sanction de retard), ou si la sanction n'a pas de date de fin (c'est une détérioration ou une perte, donc on attend un remboursement), alors il n'a pas le droit d'emprunter.
+(Sanction.dateFinSanction > current_date) or (Sanction.dateFinSanction= NULL) => (droitPret = False)
+
+- Si un adhérent est blacklisté, alors il n'est plus adhérent.
+(Adherent.blackliste=True)=>(Adherent.adhesion=False)
+- Si une personne n'est pas adhérent, elle ne peut pas emprunter.
+(Adherent.adhesion=False)=>droitPret=False
+
+- Un adhérent est blacklisté au bout d'un nombre de sanction répétées 'nombreSanctions'.
+
+- La durée du prêt est égale à la date de retour prévue moins la date de début.
+(Méthode dans Pret) dureePret() = dateRetourPrevue - dateDebut.

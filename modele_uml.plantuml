@@ -1,0 +1,122 @@
+@startuml
+
+'Titre du modèle'
+title Bibliotheque
+
+'Définition des relations'
+class Ressource {
+  code : varchar {key}
+  titre : text
+  dateApparition : date
+  editeur : text
+  genre: text
+  codeClassification : varchar {unique}
+}
+class Livre {
+  isbn : varchar {unique}
+  resume : text
+  langue : text
+}
+class OeuvreMusicale {
+  longueur : integer
+}
+class Film {
+  langue : text
+  duree : integer
+  synopsis : text
+}
+class Exemplaire {
+  etat: EtatExemplaire
+  disponible: bool
+}
+class Contributeur {
+  nom : text
+  prenom : text
+  dateNaissance : date
+  nationalite : text
+}
+class Utilisateur {
+  login : varchar {key}
+  motDePasse : varchar
+  nom : text
+  prenom : text
+  adresse : varchar
+  email : varchar
+}
+class Membre {
+}
+class Adherent {
+  dateNaissance : date
+  telephone : integer
+  adhesion : bool
+  blacklist: bool
+  droitPret: bool
+}
+class Pret {
+  dateDebut : date
+  dateRetourPrevue : date
+  dateRetourReelle : date
+  etatRetour : EtatExemplaire
+}
+Pret : dureePret() = dateRetourPrevue - dateDebutPret
+
+class Sanction {
+  motif : MotifSanction
+  dateDebut : date
+  dateFin : date
+}
+enum MotifSanction {
+  retard
+  deterioration
+  perte
+}
+enum EtatExemplaire {
+  neuf
+  bon
+  abime
+  perdu
+}
+
+'Associations d'héritage'
+Ressource <|-- Livre
+Ressource <|-- Film
+Ressource <|-- OeuvreMusicale
+Utilisateur <|-- Membre
+Utilisateur <|-- Adherent
+
+'Arrangement esthétique des relations'
+MotifSanction -[hidden]> Utilisateur
+Utilisateur -[hidden]-> Membre
+Membre -[hidden]> Adherent
+Utilisateur -[hidden]> Sanction
+Pret -[hidden]> Exemplaire
+Exemplaire -[hidden]> Ressource
+Livre -[hidden]> OeuvreMusicale
+OeuvreMusicale -[hidden]> Film
+OeuvreMusicale -[hidden]-> Contributeur
+Ressource -[hidden]->OeuvreMusicale
+Sanction -[hidden]> Pret
+Ressource -[hidden]> EtatExemplaire
+
+'Associations entre relations'
+Contributeur "1..n" -- "*" Livre : aEcrit >
+Contributeur "1..n" -- "*" OeuvreMusicale : aCompose >
+Contributeur "1..n" -- "*" OeuvreMusicale : aInterprete >
+Contributeur "1..n" -- "*" Film : aRealise >
+Contributeur "1..n" -- "*" Film : aJoueDans >
+Ressource "1" -- "1..n" Exemplaire : comprend >
+Pret "*" -- "1" Exemplaire : LieA >
+Pret "1" -- "0..1" Sanction : < EngendrePar
+Adherent "1" -- "*" Pret : Effectuer >
+Adherent "1" -- "*" Sanction : Recevoir >
+Adherent "0..1" -- "*" Exemplaire : Reserver >
+
+'Notes'
+note bottom of Contributeur : -ajouter une cle artificielle id_contributeur
+note top of Pret : -ajouter une cle artificielle id_pret\n-un exemplaire ne peut etre associe qu'a un pret en meme temps\n-etatRetour doit etre different de "neuf"
+note top of Exemplaire : -ajouter une cle artificielle id_exemplaire\n-un exemplaire ne peut etre abime ou perdu et disponible a la fois\n-un exemplaire ne peut etre emprunte que lorsqu'il est disponible
+note top of Sanction : -ajouter une cle artificielle id_sanction\n-Si un document est rendu en retard:\n dateFin (Sanction) = dateDebut (Sanction) + dateRetourReelle (Pret) - dateRetourPrevue (Pret)\n-Si un adherent degrade/perd un document:\n dateFin (Sanction) = NULL tant que le document n'est pas rembourse
+note bottom of Adherent : -recherchent des documents\n-effectuent et gerent leurs emprunts\n-peuvent se desinscrire et se reinscrire
+note bottom of Membre : -gerent des ressources documentaires:\n ajouter des documents, modifier leur description, etc.\n-gerent les prets, les retards et les sanctions\n-gerent les donnees des utilisateurs\n-etablissent des statistiques sur les documents empruntes
+
+@enduml
