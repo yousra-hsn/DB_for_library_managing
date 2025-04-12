@@ -20,7 +20,7 @@ Pour pouvoir emprunter un document, un adhérent à besoin de s'authentifier. Ch
 
 ## Contribution
 
-Projet académique réalisé dans le cadre de l'UV **NF18**. Décembre 2022
+Projet académique réalisé dans le cadre de l'UV NF18 à l'Université de Technologie de Compiègne. **Décembre 2022**
 
 4 membres : 
 - **Julie Hong**
